@@ -8,7 +8,7 @@ CirBinius provides SDKs for Rust, Python, and TypeScript.
 
 ```toml
 [dependencies]
-cirbinius-sdk = { git = "https://github.com/cirbinius/cirbinius" }
+cirbinius-sdk = { git = "https://github.com/elonmasai7/CirBinius" }
 ```
 
 ### Usage

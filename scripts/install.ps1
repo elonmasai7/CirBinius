@@ -1,5 +1,5 @@
 #!/usr/bin/env pwsh
-$Repo = "cirbinius/cirbinius"
+$Repo = "elonmasai7/CirBinius"
 $Version = if ($args[0]) { $args[0] } else { "latest" }
 $BinDir = if ($env:CIRBINIUS_BIN_DIR) { $env:CIRBINIUS_BIN_DIR } else { "$env:ProgramFiles\CirBinius" }
 

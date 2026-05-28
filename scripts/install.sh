@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO="cirbinius/cirbinius"
+REPO="elonmasai7/CirBinius"
 VERSION="${1:-latest}"
 BIN_DIR="${CIRBINIUS_BIN_DIR:-/usr/local/bin}"
 

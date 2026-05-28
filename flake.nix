@@ -36,7 +36,7 @@
 
             meta = with pkgs.lib; {
               description = "Zero-knowledge proof circuit builder and prover";
-              homepage = "https://github.com/cirbinius/cirbinius";
+              homepage = "https://github.com/elonmasai7/CirBinius";
               license = licenses.asl20;
               maintainers = [];
             };

@@ -13,9 +13,9 @@ runs:
       run: |
         VERSION="${{ inputs.version }}"
         if [ "$VERSION" = "latest" ]; then
-          curl -sSfL "https://github.com/cirbinius/cirbinius/releases/latest/download/cirbinius-$(uname -s)-$(uname -m).tar.gz" | tar xz -C /usr/local/bin
+          curl -sSfL "https://github.com/elonmasai7/CirBinius/releases/latest/download/cirbinius-$(uname -s)-$(uname -m).tar.gz" | tar xz -C /usr/local/bin
         else
-          curl -sSfL "https://github.com/cirbinius/cirbinius/releases/download/v${VERSION}/cirbinius-$(uname -s)-$(uname -m).tar.gz" | tar xz -C /usr/local/bin
+          curl -sSfL "https://github.com/elonmasai7/CirBinius/releases/download/v${VERSION}/cirbinius-$(uname -s)-$(uname -m).tar.gz" | tar xz -C /usr/local/bin
         fi
         cirbinius doctor
     - name: Verify Installation

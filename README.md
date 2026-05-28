@@ -142,7 +142,7 @@ docker-compose up
 
 ```toml
 [dependencies]
-cirbinius-sdk = { git = "https://github.com/cirbinius/cirbinius" }
+cirbinius-sdk = { git = "https://github.com/elonmasai7/CirBinius" }
 ```
 
 ```rust
@@ -225,31 +225,31 @@ cargo run -- doctor --out build/backend_capabilities.json
 ### Linux / macOS (Bash)
 
 ```bash
-curl -sSfL https://github.com/cirbinius/cirbinius/releases/latest/download/install.sh | bash
+curl -sSfL https://github.com/elonmasai7/CirBinius/releases/latest/download/install.sh | bash
 ```
 
 ### Windows (PowerShell)
 
 ```powershell
-iwr -useb https://github.com/cirbinius/cirbinius/releases/latest/download/install.ps1 | iex
+iwr -useb https://github.com/elonmasai7/CirBinius/releases/latest/download/install.ps1 | iex
 ```
 
 ### Homebrew
 
 ```bash
-brew install cirbinius/cirbinius/cirbinius
+brew install elonmasai7/CirBinius/cirbinius
 ```
 
 ### Nix
 
 ```bash
-nix run github:cirbinius/cirbinius
+nix run github:elonmasai7/CirBinius
 ```
 
 ### Cargo
 
 ```bash
-cargo install --git https://github.com/cirbinius/cirbinius cirbinius-cli cirbinius-api
+cargo install --git https://github.com/elonmasai7/CirBinius cirbinius-cli cirbinius-api
 ```
 
 ## Workspace Layout

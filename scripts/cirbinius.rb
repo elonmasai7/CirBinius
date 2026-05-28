@@ -1,10 +1,10 @@
 class Cirbinius < Formula
   desc "Zero-knowledge proof circuit builder and prover"
-  homepage "https://github.com/cirbinius/cirbinius"
-  url "https://github.com/cirbinius/cirbinius/archive/refs/tags/v0.1.0.tar.gz"
+  homepage "https://github.com/elonmasai7/CirBinius"
+  url "https://github.com/elonmasai7/CirBinius/archive/refs/tags/v0.1.0.tar.gz"
   sha256 "0000000000000000000000000000000000000000000000000000000000000000"
   license "Apache-2.0"
-  head "https://github.com/cirbinius/cirbinius.git", branch: "main"
+  head "https://github.com/elonmasai7/CirBinius.git", branch: "main"
 
   depends_on "rust" => :build
 
