@@ -39,8 +39,10 @@ fn prove_precheck_generates_witness_and_passes_with_matching_binius_witness() {
                 "tests/circuits/simple_mul_binius_witness_ok.json",
             )),
             precheck_report_path: Some(report_path.clone()),
+            cbir_path: None,
             precheck_only: true,
             backend_capabilities_path: None,
+            public_inputs: vec![],
         }),
         &CommandContext {
             project_root: workspace_root,
@@ -114,8 +116,10 @@ fn prove_precheck_fails_when_binius_witness_mismatches() {
                 "tests/circuits/simple_mul_binius_witness_bad.json",
             )),
             precheck_report_path: Some(report_path.clone()),
+            cbir_path: None,
             precheck_only: true,
             backend_capabilities_path: None,
+            public_inputs: vec![],
         }),
         &CommandContext {
             project_root: workspace_root,

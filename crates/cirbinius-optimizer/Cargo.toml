@@ -7,5 +7,7 @@ repository.workspace = true
 
 [dependencies]
 cirbinius-cbir = { path = "../cirbinius-cbir" }
+cirbinius-limb-engine = { path = "../cirbinius-limb-engine" }
 cirbinius-types = { path = "../cirbinius-types" }
 serde.workspace = true
+sha2.workspace = true

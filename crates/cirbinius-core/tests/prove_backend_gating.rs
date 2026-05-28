@@ -40,8 +40,10 @@ fn prove_requires_manifest_in_full_mode_and_honors_capabilities() {
                 "tests/circuits/simple_mul_binius_witness_ok.json",
             )),
             precheck_report_path: Some(temp_dir.join("precheck-no-manifest.json")),
+            cbir_path: None,
             precheck_only: false,
             backend_capabilities_path: None,
+            public_inputs: vec![],
         }),
         &context,
     )
@@ -74,16 +76,16 @@ fn prove_requires_manifest_in_full_mode_and_honors_capabilities() {
                 "tests/circuits/simple_mul_binius_witness_ok.json",
             )),
             precheck_report_path: Some(temp_dir.join("precheck-with-manifest.json")),
+            cbir_path: None,
             precheck_only: false,
             backend_capabilities_path: Some(manifest_path),
+            public_inputs: vec![],
         }),
         &context,
     )
-    .expect_err("manifest should gate and refuse unsupported proof generation");
+    .expect_err("full prove mode should require --cbir path");
     assert!(
-        err_with_manifest
-            .to_string()
-            .contains("proof generation is not supported"),
-        "expected capability-gated proof generation error"
+        err_with_manifest.to_string().contains("requires --cbir"),
+        "expected missing-cbir error when proof generation is enabled"
     );
 }

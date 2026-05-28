@@ -39,8 +39,10 @@ fn emitted_proof_bundle_matches_v1_schema() {
                 "tests/circuits/simple_mul_binius_witness_ok.json",
             )),
             precheck_report_path: Some(temp_dir.join("prove_precheck_report.json")),
+            cbir_path: None,
             precheck_only: true,
             backend_capabilities_path: None,
+            public_inputs: vec![],
         }),
         &CommandContext {
             project_root: workspace_root.clone(),

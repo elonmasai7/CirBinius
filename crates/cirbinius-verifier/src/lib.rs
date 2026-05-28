@@ -1,14 +1,7 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
+//! CirBinius verifier — re-exports verification from the prover crate.
+//!
+//! The `cirbinius-verifier` crate provides the public verification API.
+//! The actual verification logic lives in `cirbinius-prover` to ensure
+//! the prover and verifier share the same constraint evaluation code.
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
+pub use cirbinius_prover::verify;

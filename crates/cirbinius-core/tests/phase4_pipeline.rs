@@ -85,6 +85,7 @@ fn analyze_optimize_lower_pipeline_emits_phase4_artifacts() {
         CommandAction::Lower(LowerArgs {
             cbir_path: optimized_cbir_path,
             out_path: lowered_path.clone(),
+            limb_width: None,
         }),
         &context,
     )

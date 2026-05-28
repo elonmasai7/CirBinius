@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "optimization-report-v1.schema.json",
+  "title": "OptimizationReport",
+  "description": "Schema for the CirBinius optimization report artifact (version 1).",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "toolchain_version",
+    "report_hash",
+    "source_cbir_hash",
+    "mode",
+    "min_confidence",
+    "stats",
+    "patterns",
+    "gate_counts",
+    "warnings"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "optimization-report/v1"
+    },
+    "toolchain_version": { "type": "string" },
+    "report_hash": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "source_cbir_hash": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "mode": { "type": "string", "enum": ["compatibility", "optimized"] },
+    "min_confidence": { "type": "string", "enum": ["Exact", "Strong", "Heuristic", "Experimental"] },
+    "stats": {
+      "type": "object",
+      "required": ["total_original", "optimized_count", "compatibility_count", "eliminated_count", "estimated_field_mul_savings_pct"],
+      "properties": {
+        "total_original": { "type": "integer", "minimum": 0 },
+        "optimized_count": { "type": "integer", "minimum": 0 },
+        "compatibility_count": { "type": "integer", "minimum": 0 },
+        "eliminated_count": { "type": "integer", "minimum": 0 },
+        "estimated_field_mul_savings_pct": { "type": "number" }
+      }
+    },
+    "patterns": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["pattern_name", "confidence", "constraint_ids", "optimized_to", "estimated_saving"],
+        "properties": {
+          "pattern_name": { "type": "string" },
+          "confidence": { "type": "string", "enum": ["Exact", "Strong", "Heuristic", "Experimental", "Rejected"] },
+          "constraint_ids": { "type": "array", "items": { "type": "integer" } },
+          "optimized_to": { "type": "string" },
+          "estimated_saving": { "type": "string" }
+        }
+      }
+    },
+    "gate_counts": {
+      "type": "object",
+      "additionalProperties": { "type": "integer", "minimum": 0 }
+    },
+    "warnings": { "type": "array", "items": { "type": "string" } }
+  }
+}

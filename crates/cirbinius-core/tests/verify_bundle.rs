@@ -40,8 +40,10 @@ fn verify_accepts_valid_proof_bundle_and_rejects_tampered_bundle() {
                 "tests/circuits/simple_mul_binius_witness_ok.json",
             )),
             precheck_report_path: Some(temp_dir.join("precheck_report.json")),
+            cbir_path: None,
             precheck_only: true,
             backend_capabilities_path: None,
+            public_inputs: vec![],
         }),
         &context,
     )

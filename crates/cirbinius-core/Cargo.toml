@@ -14,6 +14,7 @@ cirbinius-frontend = { path = "../cirbinius-frontend" }
 cirbinius-normalize = { path = "../cirbinius-normalize" }
 cirbinius-optimizer = { path = "../cirbinius-optimizer" }
 cirbinius-platform = { path = "../cirbinius-platform" }
+cirbinius-prover = { path = "../cirbinius-prover" }
 cirbinius-types = { path = "../cirbinius-types" }
 cirbinius-witness = { path = "../cirbinius-witness" }
 duct.workspace = true

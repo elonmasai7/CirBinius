@@ -28,5 +28,5 @@ fn doctor_emits_backend_capabilities_manifest() {
     assert_eq!(manifest.schema_version, "backend-capabilities/v1");
     assert!(manifest.validate_hash());
     assert!(manifest.capabilities.precheck_only_supported);
-    assert!(!manifest.capabilities.proof_generation_supported);
+    assert!(manifest.capabilities.proof_generation_supported);
 }

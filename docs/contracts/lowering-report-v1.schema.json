@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "lowering-report-v1.schema.json",
+  "title": "LoweringReport",
+  "description": "Schema for the CirBinius lowering report artifact (version 1).",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "toolchain_version",
+    "report_hash",
+    "source_cbir_hash",
+    "total_constraints",
+    "gate_counts",
+    "gates",
+    "limb_width",
+    "warnings"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "lowering-report/v1"
+    },
+    "toolchain_version": {
+      "type": "string"
+    },
+    "report_hash": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "source_cbir_hash": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "total_constraints": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "gate_counts": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0
+      }
+    },
+    "gates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["constraint_id", "gate_kind", "num_signals", "limb_width", "passes"],
+        "properties": {
+          "constraint_id": { "type": "integer", "minimum": 0 },
+          "gate_kind": { "type": "string" },
+          "num_signals": { "type": "integer", "minimum": 0 },
+          "limb_width": { "type": ["string", "null"] },
+          "passes": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    },
+    "limb_width": {
+      "type": "string"
+    },
+    "warnings": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}

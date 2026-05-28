@@ -1,25 +1,9 @@
 version: "3.9"
-
 services:
   api:
     build: .
-    command: ["/usr/local/bin/cirbinius-api"]
     ports:
       - "8080:8080"
-    depends_on:
-      - postgres
-      - redis
-
-  postgres:
-    image: postgres:16
     environment:
-      POSTGRES_DB: cirbinius
-      POSTGRES_USER: cirbinius
-      POSTGRES_PASSWORD: cirbinius
-    ports:
-      - "5432:5432"
-
-  redis:
-    image: redis:7
-    ports:
-      - "6379:6379"
+      CIRBINIUS_HOST: "0.0.0.0"
+      CIRBINIUS_PORT: "8080"

@@ -35,27 +35,33 @@ It allows ZK developers to reuse existing Circom circuits while experimenting wi
 │  CBIR | ProvePrecheckBundle | ProofBundle | BackendCapabilities │
 │  Schema-versioned JSON contracts with sealed SHA-256 hashes     │
 └─────────────────────────────────────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                  cirbinius-api (HTTP Server)                     │
+│  Projects | Uploads | Jobs | Artifacts | Auth | Admin/Stats    │
+│  In-memory store | broadcast job queue | rate limiting         │
+│  Sandboxed workers with RLIMIT isolation                       │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-## Compiler Pipeline
+## SDK & Platform Layer
 
-```mermaid
-flowchart LR
-    A[Circom Source] --> B[Frontend Loader]
-    C[R1CS Binary] --> B
-    D[SYM File] --> B
-    B --> E[Constraint Normalizer]
-    E --> F[CBIR Builder]
-    F --> G[Optimization Passes]
-    G --> H[Binius64 Lowering]
-    H --> I[Prove Runtime]
-    I --> J[Proof Bundle]
-    J --> K[Verifier]
-
-    style A fill:#4a9eff,color:#fff
-    style C fill:#4a9eff,color:#fff
-    style D fill:#4a9eff,color:#fff
-    style K fill:#6bdf8f,color:#fff
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        SDK Clients                              │
+│  cirbinius-sdk (Rust) | cirbinius-py (Python) | cirbinius-ts   │
+└───────────────────────────┬─────────────────────────────────────┘
+                            │
+┌───────────────────────────▼─────────────────────────────────────┐
+│                    cirbinius-api (HTTP API)                     │
+│  /api/v1/projects | /api/v1/jobs | /api/v1/admin/*            │
+└─────────────────────────────────────────────────────────────────┘
+                            │
+┌───────────────────────────▼─────────────────────────────────────┐
+│                    Compiler Pipeline                            │
+│  Frontend → Normalize → CBIR → Optimize → Lower → Prove/Witness│
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ## Pipeline Stages
@@ -72,6 +78,11 @@ flowchart LR
 | 8. Binius64 Lowering | `cirbinius-binius64` | Classifies constraints into gate families (boolean, range_check, xor, etc.) |
 | 9. Witness Engine | `cirbinius-witness` | `.wtns` parser, witness equivalence, constraint replay, snarkjs integration |
 | 10. Artifact Contracts | `cirbinius-artifacts` | Schema-versioned JSON types with sealed SHA-256 hashes |
+| 11. API Server | `cirbinius-api` | HTTP server with projects, jobs, artifacts, auth, rate limiting |
+| 12. Rust SDK | `cirbinius-sdk` | Typed Rust client for the API |
+| 13. Python SDK | `cirbinius-py` | Python bindings via C FFI + ctypes |
+| 14. TypeScript SDK | `sdk/ts` | TypeScript client for the API |
+| 15. Plugin Framework | `cirbinius-plugin` | Plugin system for custom passes |
 
 ## CLI Reference
 
@@ -92,12 +103,81 @@ cirbinius explain      Explain constraint structure
 cirbinius clean        Clean build artifacts
 ```
 
+## API Server
+
+Start the API server:
+
+```bash
+# Start with default settings (port 8080)
+cargo run --bin cirbinius-api
+
+# Or with custom config
+CIRBINIUS_HOST=0.0.0.0 CIRBINIUS_PORT=9090 \
+  CIRBINIUS_API_KEY=my-secret-key \
+  cargo run --bin cirbinius-api
+```
+
+The API serves:
+- Developer dashboard at `http://localhost:8080/`
+- REST API at `http://localhost:8080/api/v1/*`
+
+See [API Reference](docs/api.md) for full endpoint documentation.
+
+### Docker
+
+```bash
+docker build -t cirbinius-api .
+docker run -p 8080:8080 cirbinius-api
+```
+
+Or with docker-compose:
+
+```bash
+docker-compose up
+```
+
+## SDK Quick Start
+
+### Rust SDK
+
+```toml
+[dependencies]
+cirbinius-sdk = { git = "https://github.com/cirbinius/cirbinius" }
+```
+
+```rust
+use cirbinius_sdk::CirbiniusClient;
+
+let client = CirbiniusClient::new("127.0.0.1", 8080)
+    .with_api_key("my-api-key");
+let health = client.health().await?;
+println!("{health:?}");
+```
+
+### Python SDK
+
+```python
+from cirbinius import CirbiniusClient
+
+client = CirbiniusClient(host="127.0.0.1", port=8080, api_key="my-api-key")
+print(client.health())
+```
+
+### TypeScript SDK
+
+```typescript
+import { CirbiniusClient } from '@cirbinius/sdk';
+
+const client = new CirbiniusClient('127.0.0.1', 8080, 'my-api-key');
+const health = await client.health();
+console.log(health);
+```
+
 ## Quick Start
 
 ### 1. Compile from R1CS
 
 ```bash
-# Load an existing .r1cs + .sym and emit CBIR
 cargo run -- compile-r1cs --r1cs tests/circuits/simple_mul.r1cs \
   --sym tests/circuits/simple_mul.sym --out build/
 ```
@@ -105,7 +185,6 @@ cargo run -- compile-r1cs --r1cs tests/circuits/simple_mul.r1cs \
 ### 2. Compile from Circom Source
 
 ```bash
-# Requires circom binary installed
 cargo run -- compile tests/circuits/simple_mul.circom --out build/
 ```
 
@@ -141,6 +220,38 @@ cargo run -- verify --bundle build/proof_bundle.json
 cargo run -- doctor --out build/backend_capabilities.json
 ```
 
+## Cross-Platform Installation
+
+### Linux / macOS (Bash)
+
+```bash
+curl -sSfL https://github.com/cirbinius/cirbinius/releases/latest/download/install.sh | bash
+```
+
+### Windows (PowerShell)
+
+```powershell
+iwr -useb https://github.com/cirbinius/cirbinius/releases/latest/download/install.ps1 | iex
+```
+
+### Homebrew
+
+```bash
+brew install cirbinius/cirbinius/cirbinius
+```
+
+### Nix
+
+```bash
+nix run github:cirbinius/cirbinius
+```
+
+### Cargo
+
+```bash
+cargo install --git https://github.com/cirbinius/cirbinius cirbinius-cli cirbinius-api
+```
+
 ## Workspace Layout
 
 ```
@@ -162,17 +273,26 @@ cirbinius/
 │   ├── cirbinius-verifier  # Verifier scaffold
 │   ├── cirbinius-reports   # Report generation
 │   ├── cirbinius-sandbox   # Sandbox/workflow environment
-│   ├── cirbinius-api       # API server scaffold
+│   ├── cirbinius-api       # API server (hyper + tower)
+│   ├── cirbinius-sdk       # Rust SDK client
+│   ├── cirbinius-py        # Python bindings (C FFI)
+│   ├── cirbinius-plugin    # Plugin framework
 │   ├── cirbinius-bench     # Benchmarking harness
 │   └── cirbinius-types     # Shared types (Backend, CompileMode, etc.)
+├── vendor/httpdate         # Vendored httpdate crate (hyper dep)
+├── sdk/
+│   └── ts/                 # TypeScript SDK
 ├── tests/
 │   ├── circuits/           # Circuit fixtures (.r1cs, .sym, .wtns, .wasm)
 │   ├── golden/             # Golden artifact files
 │   ├── fuzz/               # Fuzz test harnesses
 │   └── integration/        # Integration test helpers
 ├── examples/               # Example circuits
+├── cirbinius-conformance/  # Conformance test suite
 ├── docs/
 │   ├── contracts/          # Schema-versioned JSON contracts + docs
+│   ├── api.md              # API reference
+│   ├── sdk.md              # SDK reference
 │   ├── architecture.md
 │   ├── compiler-pipeline.md
 │   ├── cli.md
@@ -180,9 +300,12 @@ cirbinius/
 │   ├── cbir-spec.md
 │   ├── security.md
 │   └── contributing.md
-├── sdk/                    # Language SDKs (rust, python, typescript)
+├── web/
+│   └── dashboard/          # Developer dashboard (static HTML)
+├── scripts/                # Installer scripts + Homebrew formula
 └── .github/
-    └── workflows/ci.yml    # CI with schema guard, lint, test, artifact upload
+    ├── actions/setup-cirbinius/  # GitHub Action
+    └── workflows/ci.yml         # CI with schema guard, lint, test, artifact upload
 ```
 
 ## Deterministic Artifact Contracts
@@ -199,4 +322,4 @@ Contracts are enforced in CI via `.github/schema_guard.py`.
 
 ## License
 
-MIT
+Apache-2.0

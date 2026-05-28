@@ -4,3 +4,8 @@
 *.swo
 *~
 .DS_Store
+__pycache__/
+*.pyc
+node_modules/
+dist/
+cirbinius_state.json

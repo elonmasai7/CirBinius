@@ -1,6 +1,17 @@
 [package]
 name = "cirbinius-prover"
-version = "0.1.0"
-edition = "2024"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
 
 [dependencies]
+anyhow.workspace = true
+cirbinius-artifacts = { path = "../cirbinius-artifacts" }
+cirbinius-cbir = { path = "../cirbinius-cbir" }
+cirbinius-types = { path = "../cirbinius-types" }
+num-bigint.workspace = true
+num-traits.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true

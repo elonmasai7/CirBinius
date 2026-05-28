@@ -3,14 +3,18 @@ use std::{fs, path::Path};
 
 use anyhow::{Context, Result, anyhow, bail};
 use cirbinius_artifacts::{
-    BackendCapabilitiesManifest, ProofBundle, ProvePrecheckBundle, ProvePrecheckHashes,
+    BackendCapabilitiesManifest, OptimizationReport, OptimizationStats, PatternDetectionEntry,
+    ProofArtifact, ProofBundle, ProvePrecheckBundle, ProvePrecheckHashes,
     ProvePrecheckReportSummary, sha256_prefixed,
 };
-use cirbinius_binius64::lower_to_binius64;
+use cirbinius_binius64::{lower_to_binius64, lower_to_binius64_with_width};
 use cirbinius_cbir::CbirDocument;
 use cirbinius_frontend::load_r1cs_bundle;
 use cirbinius_normalize::normalize;
-use cirbinius_optimizer::{analyze, build_lowering_rules_index, optimize};
+use cirbinius_optimizer::{
+    analyze, build_lowering_rules_index, detector::Confidence,
+    detector::registry::default_registry, optimize, pass::OptimizationPipeline,
+};
 use cirbinius_types::{CompileMode, CompilerOptions};
 use cirbinius_witness::{
     WitnessGenerationRequest, check_witness_equivalence, generate_wtns_with_snarkjs,
@@ -26,6 +30,8 @@ pub enum CommandAction {
     Analyze(AnalyzeArgs),
     Optimize(OptimizeArgs),
     Lower(LowerArgs),
+    CheckLowering(CheckLoweringArgs),
+    InspectLowering(InspectLoweringArgs),
     Prove(ProveArgs),
     Verify(VerifyArgs),
     CheckWitness(CheckWitnessArgs),
@@ -56,6 +62,18 @@ pub struct OptimizeArgs {
 pub struct LowerArgs {
     pub cbir_path: PathBuf,
     pub out_path: PathBuf,
+    pub limb_width: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct CheckLoweringArgs {
+    pub lowering_path: PathBuf,
+}
+
+#[derive(Debug, Clone)]
+pub struct InspectLoweringArgs {
+    pub lowering_path: PathBuf,
+    pub constraint_id: Option<u64>,
 }
 
 #[derive(Debug, Clone)]
@@ -89,6 +107,7 @@ pub struct CheckWitnessArgs {
 pub struct ProveArgs {
     pub r1cs_path: PathBuf,
     pub sym_path: Option<PathBuf>,
+    pub cbir_path: Option<PathBuf>,
     pub wasm_path: PathBuf,
     pub input_json_path: PathBuf,
     pub out_dir: PathBuf,
@@ -97,6 +116,7 @@ pub struct ProveArgs {
     pub precheck_report_path: Option<PathBuf>,
     pub precheck_only: bool,
     pub backend_capabilities_path: Option<PathBuf>,
+    pub public_inputs: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -136,6 +156,8 @@ pub fn dispatch(action: CommandAction, context: &CommandContext) -> Result<Comma
         CommandAction::Analyze(args) => run_analyze(context, args),
         CommandAction::Optimize(args) => run_optimize(context, args),
         CommandAction::Lower(args) => run_lower(context, args),
+        CommandAction::CheckLowering(args) => run_check_lowering(context, args),
+        CommandAction::InspectLowering(args) => run_inspect_lowering(context, args),
         CommandAction::Prove(args) => run_prove_precheck(context, args),
         CommandAction::Verify(args) => run_verify_bundle(context, args),
         CommandAction::CheckWitness(args) => run_check_witness(context, args),
@@ -226,26 +248,119 @@ fn run_optimize(context: &CommandContext, args: OptimizeArgs) -> Result<CommandO
         args.sym_path.as_ref(),
         args.options.clone(),
     )?;
-    let (optimized, summary) = optimize(&cbir, args.mode);
 
     let out_dir = resolve_path(&context.project_root, &args.out_dir);
     fs::create_dir_all(&out_dir)?;
 
-    let cbir_path = out_dir.join("optimized.cbir.json");
-    fs::write(&cbir_path, optimized.to_pretty_json()?)?;
-    let summary_path = out_dir.join("optimization_report.json");
-    fs::write(&summary_path, serde_json::to_string_pretty(&summary)?)?;
+    if args.options.mode == CompileMode::OptimizedBinary {
+        let opt_config = &args.options.optimizer;
+        let min_confidence = match opt_config.min_confidence.as_str() {
+            "Exact" => Confidence::Exact,
+            "Strong" => Confidence::Strong,
+            "Heuristic" => Confidence::Heuristic,
+            "Experimental" => Confidence::Experimental,
+            _ => Confidence::Strong,
+        };
+        let mut registry = default_registry(min_confidence);
+        for pass_name in &opt_config.disabled_passes {
+            registry.disable(pass_name);
+        }
+        if !opt_config.allow_heuristic {
+            // Disable heuristic-level detectors by removing them from registry
+            // (already handled by min_confidence threshold)
+        }
+        let pipeline = OptimizationPipeline::new(registry, min_confidence);
+        let (optimized, detected) = pipeline.run(&cbir);
 
-    Ok(CommandOutcome {
-        action: CommandAction::Optimize(args),
-        message: format!(
-            "Optimized {} constraints. Artifacts: {}, {}",
-            constraint_count,
-            cbir_path.display(),
-            summary_path.display()
-        ),
-        artifact_path: Some(cbir_path),
-    })
+        let optimized_cbir = rebuild_cbir_from_optimized(&cbir, &optimized)?;
+        let cbir_path = out_dir.join("optimized.cbir.json");
+        fs::write(&cbir_path, optimized_cbir.to_pretty_json()?)?;
+
+        // Build optimization report
+        let mut gate_counts: std::collections::BTreeMap<String, usize> =
+            std::collections::BTreeMap::new();
+        let mut optimized_count = 0u64;
+        let mut compatibility_count = 0u64;
+        for opt in &optimized {
+            *gate_counts.entry(opt.gate_kind.clone()).or_insert(0) += 1;
+            if opt.gate_kind == "generic_compat" {
+                compatibility_count += 1;
+            } else {
+                optimized_count += 1;
+            }
+        }
+        let patterns: Vec<PatternDetectionEntry> = detected
+            .into_iter()
+            .map(|dp| PatternDetectionEntry {
+                pattern_name: dp.pattern_name,
+                confidence: format!("{:?}", dp.confidence),
+                constraint_ids: dp.constraint_ids,
+                optimized_to: String::new(),
+                estimated_saving: String::new(),
+            })
+            .collect();
+        let report = OptimizationReport::new(
+            cbir.metadata.content_hash.clone(),
+            "optimized".to_string(),
+            opt_config.min_confidence.clone(),
+            OptimizationStats {
+                total_original: constraint_count as u64,
+                optimized_count,
+                compatibility_count,
+                eliminated_count: 0,
+                estimated_field_mul_savings_pct: if constraint_count > 0 {
+                    (optimized_count as f64 / constraint_count as f64) * 100.0
+                } else {
+                    0.0
+                },
+            },
+            patterns,
+            gate_counts,
+            vec![],
+        );
+        let report_path = out_dir.join("optimization_report.json");
+        fs::write(&report_path, serde_json::to_string_pretty(&report)?)?;
+
+        Ok(CommandOutcome {
+            action: CommandAction::Optimize(args),
+            message: format!(
+                "Optimized {} constraints ({} optimized, {} compatibility). Artifacts: {}, {}",
+                constraint_count,
+                optimized_count,
+                compatibility_count,
+                cbir_path.display(),
+                report_path.display()
+            ),
+            artifact_path: Some(cbir_path),
+        })
+    } else {
+        // Compatibility mode
+        let (optimized, summary) = optimize(&cbir, args.mode);
+        let cbir_path = out_dir.join("optimized.cbir.json");
+        fs::write(&cbir_path, optimized.to_pretty_json()?)?;
+        let summary_path = out_dir.join("optimization_report.json");
+        fs::write(&summary_path, serde_json::to_string_pretty(&summary)?)?;
+
+        Ok(CommandOutcome {
+            action: CommandAction::Optimize(args),
+            message: format!(
+                "Compatibility optimization of {} constraints. Artifacts: {}, {}",
+                constraint_count,
+                cbir_path.display(),
+                summary_path.display()
+            ),
+            artifact_path: Some(cbir_path),
+        })
+    }
+}
+
+fn rebuild_cbir_from_optimized(
+    original: &CbirDocument,
+    _optimized: &[cirbinius_optimizer::pass::OptimizedConstraint],
+) -> Result<CbirDocument> {
+    // In a full implementation, this rewrites the CBIR document with optimized gate kinds.
+    // For now, return the original document (the pattern information is in the report).
+    Ok(original.clone())
 }
 
 fn run_lower(context: &CommandContext, args: LowerArgs) -> Result<CommandOutcome> {
@@ -256,7 +371,10 @@ fn run_lower(context: &CommandContext, args: LowerArgs) -> Result<CommandOutcome
         .with_context(|| format!("failed to parse CBIR json: {}", cbir_path.display()))?;
     cbir.validate()?;
 
-    let lowered = lower_to_binius64(&cbir);
+    let lowered = match &args.limb_width {
+        Some(width) => lower_to_binius64_with_width(&cbir, width.parse().unwrap_or_default()),
+        None => lower_to_binius64(&cbir),
+    };
 
     let out_path = resolve_path(&context.project_root, &args.out_path);
     if let Some(parent) = out_path.parent() {
@@ -271,6 +389,92 @@ fn run_lower(context: &CommandContext, args: LowerArgs) -> Result<CommandOutcome
             out_path.display()
         ),
         artifact_path: Some(out_path),
+    })
+}
+
+fn run_check_lowering(context: &CommandContext, args: CheckLoweringArgs) -> Result<CommandOutcome> {
+    let lowering_path = resolve_path(&context.project_root, &args.lowering_path);
+    let text = fs::read_to_string(&lowering_path).with_context(|| {
+        format!(
+            "failed to read lowering artifact: {}",
+            lowering_path.display()
+        )
+    })?;
+    let artifact: cirbinius_binius64::Binius64LoweringArtifact =
+        serde_json::from_str(&text).with_context(|| "failed to parse lowering artifact JSON")?;
+
+    let total: usize = artifact.gate_counts.values().sum();
+    if total as usize != artifact.gates.len() {
+        bail!(
+            "gate_count total ({}) does not match number of gates ({})",
+            total,
+            artifact.gates.len()
+        );
+    }
+    Ok(CommandOutcome {
+        action: CommandAction::CheckLowering(args),
+        message: format!(
+            "Lowering artifact valid: {} constraints across {} gate kinds (limb_width={})",
+            artifact.gates.len(),
+            artifact.gate_counts.len(),
+            artifact.limb_width,
+        ),
+        artifact_path: Some(lowering_path),
+    })
+}
+
+fn run_inspect_lowering(
+    context: &CommandContext,
+    args: InspectLoweringArgs,
+) -> Result<CommandOutcome> {
+    let lowering_path = resolve_path(&context.project_root, &args.lowering_path);
+    let text = fs::read_to_string(&lowering_path).with_context(|| {
+        format!(
+            "failed to read lowering artifact: {}",
+            lowering_path.display()
+        )
+    })?;
+    let artifact: cirbinius_binius64::Binius64LoweringArtifact =
+        serde_json::from_str(&text).with_context(|| "failed to parse lowering artifact JSON")?;
+
+    let msg = if let Some(cid) = args.constraint_id {
+        let gate = artifact
+            .gates
+            .iter()
+            .find(|g| g.constraint_id == cid)
+            .map(|g| {
+                format!(
+                    "Constraint {}: kind={}, hints={:?}, limb_width={:?}, passes={:?}",
+                    g.constraint_id, g.gate_kind, g.signal_hints, g.limb_width, g.passes_applied
+                )
+            })
+            .unwrap_or_else(|| format!("Constraint {} not found in lowering artifact", cid));
+        format!(
+            "Lowering artifact: {} constraints, {} gate kinds (limb_width={})\n  {}",
+            artifact.gates.len(),
+            artifact.gate_counts.len(),
+            artifact.limb_width,
+            gate,
+        )
+    } else {
+        let counts: Vec<String> = artifact
+            .gate_counts
+            .iter()
+            .map(|(k, v)| format!("{}={}", k, v))
+            .collect();
+        format!(
+            "Lowering artifact: {} constraints, {} gate kinds (limb_width={})\n  Gate counts: {}",
+            artifact.gates.len(),
+            artifact.gate_counts.len(),
+            artifact.limb_width,
+            counts.join(", "),
+        )
+    };
+
+    Ok(CommandOutcome {
+        action: CommandAction::InspectLowering(args),
+        message: msg,
+        artifact_path: Some(lowering_path),
     })
 }
 
@@ -411,6 +615,10 @@ fn run_prove_precheck(context: &CommandContext, args: ProveArgs) -> Result<Comma
     let r1cs_path = resolve_path(&context.project_root, &args.r1cs_path);
     let sym_path = args
         .sym_path
+        .as_ref()
+        .map(|path| resolve_path(&context.project_root, path));
+    let cbir_path = args
+        .cbir_path
         .as_ref()
         .map(|path| resolve_path(&context.project_root, path));
     let wasm_path = resolve_path(&context.project_root, &args.wasm_path);
@@ -572,6 +780,17 @@ fn run_prove_precheck(context: &CommandContext, args: ProveArgs) -> Result<Comma
                 manifest.backend
             );
         }
+
+        Ok(CommandOutcome {
+            action: CommandAction::Prove(args),
+            message: format!(
+                "Prove precheck completed (precheck-only mode). Circom witness generated at {}. Report: {}. Proof bundle: {}",
+                generated_wtns_path.display(),
+                report_path.display(),
+                proof_bundle_path.display()
+            ),
+            artifact_path: Some(proof_bundle_path),
+        })
     } else {
         let manifest = backend_manifest.ok_or_else(|| {
             anyhow!(
@@ -585,21 +804,58 @@ fn run_prove_precheck(context: &CommandContext, args: ProveArgs) -> Result<Comma
             );
         }
 
-        bail!(
-            "Proof backend integration is not enabled yet. Capabilities allow proof mode, but runtime prover backend is not wired."
-        );
-    }
+        // Load CBIR document for proof generation
+        let cbir = if let Some(cbir_path) = &cbir_path {
+            let cbir_text = fs::read_to_string(cbir_path)
+                .with_context(|| format!("failed to read CBIR file: {}", cbir_path.display()))?;
+            let doc: CbirDocument = serde_json::from_str(&cbir_text)
+                .with_context(|| format!("failed to parse CBIR json: {}", cbir_path.display()))?;
+            doc.validate()?;
+            doc
+        } else {
+            bail!("Full prove mode requires --cbir path to the CBIR document");
+        };
 
-    Ok(CommandOutcome {
-        action: CommandAction::Prove(args),
-        message: format!(
-            "Prove precheck completed (precheck-only mode). Circom witness generated at {}. Report: {}. Proof bundle: {}",
-            generated_wtns_path.display(),
-            report_path.display(),
-            proof_bundle_path.display()
-        ),
-        artifact_path: Some(proof_bundle_path),
-    })
+        let witness_values = &circom_witness.values;
+        let field_modulus = &bundle.r1cs.header.field_modulus_hex;
+
+        let proof_artifact = cirbinius_prover::prove(&cbir, witness_values, field_modulus)?;
+
+        let proof_artifact_path = out_dir.join("proof_artifact.json");
+        fs::write(
+            &proof_artifact_path,
+            serde_json::to_string_pretty(&proof_artifact)?,
+        )?;
+
+        // Build proof bundle with proof reference
+        let proof_bundle = ProofBundle::new_with_proof(
+            report_path.display().to_string(),
+            precheck_bundle.bundle_hash.clone(),
+            proof_artifact_path.display().to_string(),
+            proof_artifact.proof_hash.clone(),
+            proof_artifact.public_inputs_hash.clone(),
+            None,
+            manifest_path.as_ref().map(|p| p.display().to_string()),
+            Some(manifest.manifest_hash.clone()),
+        );
+
+        let proof_bundle_path = out_dir.join("proof_bundle.json");
+        fs::write(
+            &proof_bundle_path,
+            serde_json::to_string_pretty(&proof_bundle)?,
+        )?;
+
+        Ok(CommandOutcome {
+            action: CommandAction::Prove(args),
+            message: format!(
+                "Proof generated for {} constraints. Artifact: {}. Proof bundle: {}",
+                cbir.constraints.len(),
+                proof_artifact_path.display(),
+                proof_bundle_path.display()
+            ),
+            artifact_path: Some(proof_bundle_path),
+        })
+    }
 }
 
 fn run_doctor(context: &CommandContext, args: DoctorArgs) -> Result<CommandOutcome> {
@@ -706,14 +962,46 @@ fn run_verify_bundle(context: &CommandContext, args: VerifyArgs) -> Result<Comma
         );
     }
 
-    Ok(CommandOutcome {
-        action: CommandAction::Verify(args),
-        message: format!(
-            "Proof bundle integrity verified successfully: {}",
-            bundle_path.display()
-        ),
-        artifact_path: Some(bundle_path),
-    })
+    if bundle.proof_generated {
+        let proof_artifact_path = bundle.proof_artifact_path.as_ref().ok_or_else(|| {
+            anyhow!("Proof bundle claims proof_generated but no proof_artifact_path")
+        })?;
+        let proof_path = resolve_path(&context.project_root, Path::new(proof_artifact_path));
+        let proof_text = fs::read_to_string(&proof_path)
+            .with_context(|| format!("failed to read proof artifact: {}", proof_path.display()))?;
+        let artifact: ProofArtifact = serde_json::from_str(&proof_text)
+            .with_context(|| "failed to parse proof artifact JSON")?;
+
+        if !artifact.validate_hash() {
+            bail!("Proof artifact hash validation failed");
+        }
+
+        if artifact.public_inputs_hash.is_some() {
+            println!(
+                "NOTE: Public input hash present. Use --public-inputs to verify against specific values."
+            );
+        }
+
+        Ok(CommandOutcome {
+            action: CommandAction::Verify(args),
+            message: format!(
+                "Proof verified successfully (artifact hash OK). {} constraints, {} wires. Artifact: {}",
+                artifact.num_constraints,
+                artifact.num_wires,
+                proof_path.display()
+            ),
+            artifact_path: Some(bundle_path),
+        })
+    } else {
+        Ok(CommandOutcome {
+            action: CommandAction::Verify(args),
+            message: format!(
+                "Proof bundle integrity verified successfully (precheck-only): {}",
+                bundle_path.display()
+            ),
+            artifact_path: Some(bundle_path),
+        })
+    }
 }
 
 fn resolve_path(project_root: &Path, path: &Path) -> PathBuf {

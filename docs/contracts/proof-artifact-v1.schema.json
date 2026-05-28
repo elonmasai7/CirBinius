@@ -1,0 +1,146 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cirbinius.dev/schemas/proof-artifact-v1.schema.json",
+  "title": "CirBinius Proof Artifact v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "toolchain_version",
+    "proof_hash",
+    "source_cbir_hash",
+    "merkle_root",
+    "num_constraints",
+    "num_wires",
+    "public_input_count",
+    "public_output_count",
+    "constraint_proofs",
+    "public_inputs_hash",
+    "verifier_key_fingerprint"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "proof-artifact/v1"
+    },
+    "toolchain_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "proof_hash": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "source_cbir_hash": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "merkle_root": {
+      "type": "string",
+      "pattern": "^0x[0-9a-f]{64}$"
+    },
+    "num_constraints": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "num_wires": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "public_input_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "public_output_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "constraint_proofs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "constraint_id",
+          "wire_values",
+          "a_eval_hex",
+          "b_eval_hex",
+          "c_eval_hex",
+          "resolved"
+        ],
+        "properties": {
+          "constraint_id": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "wire_values": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "wire_id",
+                "value_hex",
+                "merkle_siblings"
+              ],
+              "properties": {
+                "wire_id": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "value_hex": {
+                  "type": "string",
+                  "pattern": "^0x[0-9a-f]+$"
+                },
+                "merkle_siblings": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "pattern": "^0x[0-9a-f]{64}$"
+                  }
+                }
+              }
+            }
+          },
+          "a_eval_hex": {
+            "type": "string",
+            "pattern": "^0x[0-9a-f]+$"
+          },
+          "b_eval_hex": {
+            "type": "string",
+            "pattern": "^0x[0-9a-f]+$"
+          },
+          "c_eval_hex": {
+            "type": "string",
+            "pattern": "^0x[0-9a-f]+$"
+          },
+          "resolved": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "public_inputs_hash": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        }
+      ]
+    },
+    "verifier_key_fingerprint": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "string",
+          "minLength": 1
+        }
+      ]
+    }
+  }
+}

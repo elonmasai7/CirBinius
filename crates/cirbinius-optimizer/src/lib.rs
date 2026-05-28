@@ -1,8 +1,14 @@
+pub mod detector;
+pub mod pass;
+
 use std::collections::BTreeMap;
 
 use cirbinius_cbir::{CbirConstraint, CbirDocument, CbirLinearCombination};
 use cirbinius_types::CompileMode;
 use serde::{Deserialize, Serialize};
+
+// -- Backward-compat exports from old optimizer --
+pub use detector::{Confidence, PatternDetector, registry::DetectorRegistry};
 
 const RULE_BOOLEAN: &str = "boolean_constraints";
 const RULE_BIT_DECOMP: &str = "bit_decomposition_candidates";
