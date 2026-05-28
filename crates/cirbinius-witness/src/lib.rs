@@ -2,7 +2,6 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::io::{Cursor, Read};
 use std::path::{Path, PathBuf};
-use std::process::Command;
 
 use anyhow::{Context, Result, anyhow, bail, ensure};
 use cirbinius_r1cs::{ParsedR1cs, R1csConstraint, R1csLinearCombination};
@@ -64,14 +63,21 @@ pub fn parse_wtns_file(path: &Path) -> Result<ParsedWitness> {
 }
 
 pub fn generate_wtns_with_snarkjs(request: &WitnessGenerationRequest) -> Result<()> {
-    let output = Command::new(&request.snarkjs_bin)
-        .arg("wtns")
-        .arg("calculate")
-        .arg(&request.wasm_path)
-        .arg(&request.input_json_path)
-        .arg(&request.output_wtns_path)
-        .output()
-        .with_context(|| format!("failed to execute snarkjs binary '{}'", request.snarkjs_bin))?;
+    let output = duct::cmd(
+        &request.snarkjs_bin,
+        &[
+            "wtns",
+            "calculate",
+            &request.wasm_path.display().to_string(),
+            &request.input_json_path.display().to_string(),
+            &request.output_wtns_path.display().to_string(),
+        ],
+    )
+    .unchecked()
+    .stdout_capture()
+    .stderr_capture()
+    .run()
+    .with_context(|| format!("failed to execute snarkjs binary '{}'", request.snarkjs_bin))?;
 
     if !output.status.success() {
         let stdout = String::from_utf8_lossy(&output.stdout);

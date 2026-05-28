@@ -197,18 +197,6 @@ Every emitted artifact follows a versioned JSON schema and includes:
 
 Contracts are enforced in CI via `.github/schema_guard.py`.
 
-## Status
-
-This repository contains the production CirBinius compiler toolchain. All core phases are implemented as real vertical slices with integration tests:
-
-- ✅ **Phase 1**: R1CS/SYM parsing → CBIR emission (deterministic, hash-validated)
-- ✅ **Phase 2**: Circom source compilation → R1CS → CBIR (differential-tested)
-- ✅ **Phase 3**: Witness engine (.wtns parsing, equivalence, constraint replay)
-- ✅ **Phase 4**: Pattern recognition, optimization, lowering rules index
-- ✅ **Phase 5**: Prove precheck + proof bundle integrity + verify
-- ✅ **Phase 6**: Backend capabilities manifest + doctor + capability gating
-- ✅ **CI**: Schema guard, formatting, clippy, 40+ tests, PR artifact upload
-
 ## License
 
 MIT

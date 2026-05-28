@@ -1,18 +1,14 @@
 use std::fs;
-use std::path::PathBuf;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 use cirbinius_artifacts::BackendCapabilitiesManifest;
 use cirbinius_core::{CommandAction, CommandContext, DoctorArgs, dispatch};
 
+mod common;
+
 #[test]
 fn doctor_emits_backend_capabilities_manifest() {
-    let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let unique = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("clock should be after unix epoch")
-        .as_nanos();
-    let out_path = std::env::temp_dir().join(format!("cirbinius-doctor-{unique}.json"));
+    let workspace_root = common::workspace_root();
+    let out_path = common::temp_dir("doctor").join("backend_capabilities.json");
 
     let outcome = dispatch(
         CommandAction::Doctor(DoctorArgs {

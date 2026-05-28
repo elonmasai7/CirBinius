@@ -1,20 +1,26 @@
 use std::fs;
-use std::path::{Path, PathBuf};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::path::PathBuf;
 
 use cirbinius_core::{CommandAction, CommandContext, ProveArgs, dispatch};
 
+mod common;
+
 #[test]
 fn prove_precheck_generates_witness_and_passes_with_matching_binius_witness() {
-    let workspace_root = workspace_root();
-    let temp_dir = temp_dir("prove-ok");
+    let workspace_root = common::workspace_root();
+    let temp_dir = common::temp_dir("prove-ok");
     fs::create_dir_all(&temp_dir).expect("should create temp directory");
 
     let wasm_path = temp_dir.join("circuit.wasm");
     fs::write(&wasm_path, b"placeholder wasm").expect("should write wasm placeholder");
 
-    let script_path = temp_dir.join("fake-snarkjs.sh");
-    write_fake_snarkjs(
+    let script_name = if cfg!(windows) {
+        "fake-snarkjs.bat"
+    } else {
+        "fake-snarkjs.sh"
+    };
+    let script_path = temp_dir.join(script_name);
+    common::write_fake_snarkjs(
         &script_path,
         &workspace_root.join("tests/circuits/simple_mul.wtns"),
     );
@@ -76,15 +82,20 @@ fn prove_precheck_generates_witness_and_passes_with_matching_binius_witness() {
 
 #[test]
 fn prove_precheck_fails_when_binius_witness_mismatches() {
-    let workspace_root = workspace_root();
-    let temp_dir = temp_dir("prove-bad");
+    let workspace_root = common::workspace_root();
+    let temp_dir = common::temp_dir("prove-bad");
     fs::create_dir_all(&temp_dir).expect("should create temp directory");
 
     let wasm_path = temp_dir.join("circuit.wasm");
     fs::write(&wasm_path, b"placeholder wasm").expect("should write wasm placeholder");
 
-    let script_path = temp_dir.join("fake-snarkjs.sh");
-    write_fake_snarkjs(
+    let script_name = if cfg!(windows) {
+        "fake-snarkjs.bat"
+    } else {
+        "fake-snarkjs.sh"
+    };
+    let script_path = temp_dir.join(script_name);
+    common::write_fake_snarkjs(
         &script_path,
         &workspace_root.join("tests/circuits/simple_mul.wtns"),
     );
@@ -123,31 +134,4 @@ fn prove_precheck_fails_when_binius_witness_mismatches() {
     assert_eq!(report["report"]["precheck_passed"], false);
     assert_eq!(report["report"]["value_mismatch_count"], 1);
     assert_eq!(report["report"]["constraint_failure_count"], 1);
-}
-
-fn write_fake_snarkjs(script_path: &Path, witness_fixture_path: &Path) {
-    let script = format!(
-        "#!/bin/sh\ncp '{}' \"$5\"\n",
-        witness_fixture_path.display()
-    );
-    fs::write(script_path, script).expect("should write fake snarkjs script");
-
-    use std::os::unix::fs::PermissionsExt;
-    let mut perms = fs::metadata(script_path)
-        .expect("should read script metadata")
-        .permissions();
-    perms.set_mode(0o755);
-    fs::set_permissions(script_path, perms).expect("should set executable permissions");
-}
-
-fn workspace_root() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
-}
-
-fn temp_dir(tag: &str) -> PathBuf {
-    let unique = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("clock should be after unix epoch")
-        .as_nanos();
-    std::env::temp_dir().join(format!("cirbinius-{tag}-{unique}"))
 }

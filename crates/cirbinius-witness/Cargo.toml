@@ -9,6 +9,7 @@ repository.workspace = true
 anyhow.workspace = true
 cirbinius-r1cs = { path = "../cirbinius-r1cs" }
 cirbinius-symbols = { path = "../cirbinius-symbols" }
+duct.workspace = true
 num-bigint.workspace = true
 num-traits.workspace = true
 serde.workspace = true

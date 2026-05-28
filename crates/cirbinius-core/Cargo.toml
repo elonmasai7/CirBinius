@@ -13,8 +13,10 @@ cirbinius-cbir = { path = "../cirbinius-cbir" }
 cirbinius-frontend = { path = "../cirbinius-frontend" }
 cirbinius-normalize = { path = "../cirbinius-normalize" }
 cirbinius-optimizer = { path = "../cirbinius-optimizer" }
-cirbinius-witness = { path = "../cirbinius-witness" }
+cirbinius-platform = { path = "../cirbinius-platform" }
 cirbinius-types = { path = "../cirbinius-types" }
+cirbinius-witness = { path = "../cirbinius-witness" }
+duct.workspace = true
 serde_json.workspace = true
 
 [dev-dependencies]

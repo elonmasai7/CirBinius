@@ -334,7 +334,10 @@ mod tests {
             },
             ProvePrecheckReportSummary {
                 precheck_passed: true,
-                generated_witness_path: "/tmp/circom.wtns".to_string(),
+                generated_witness_path: std::env::temp_dir()
+                    .join("circom.wtns")
+                    .display()
+                    .to_string(),
                 generated_witness_len: 1024,
                 r1cs_wire_count: 1024,
                 witness_equivalent: Some(true),
@@ -369,7 +372,7 @@ mod tests {
             },
             "report": {
                 "precheck_passed": true,
-                "generated_witness_path": "/tmp/circom.wtns",
+                "generated_witness_path": "",
                 "generated_witness_len": 4,
                 "r1cs_wire_count": 4,
                 "witness_equivalent": null,

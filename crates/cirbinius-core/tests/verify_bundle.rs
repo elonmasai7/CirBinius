@@ -1,19 +1,25 @@
 use std::fs;
-use std::path::{Path, PathBuf};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::path::PathBuf;
 
 use cirbinius_core::{CommandAction, CommandContext, ProveArgs, VerifyArgs, dispatch};
 
+mod common;
+
 #[test]
 fn verify_accepts_valid_proof_bundle_and_rejects_tampered_bundle() {
-    let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let temp_dir = temp_dir("verify-bundle");
+    let workspace_root = common::workspace_root();
+    let temp_dir = common::temp_dir("verify-bundle");
     fs::create_dir_all(&temp_dir).expect("should create temp directory");
 
     let wasm_path = temp_dir.join("circuit.wasm");
     fs::write(&wasm_path, b"placeholder wasm").expect("should write wasm placeholder");
-    let script_path = temp_dir.join("fake-snarkjs.sh");
-    write_fake_snarkjs(
+    let script_name = if cfg!(windows) {
+        "fake-snarkjs.bat"
+    } else {
+        "fake-snarkjs.sh"
+    };
+    let script_path = temp_dir.join(script_name);
+    common::write_fake_snarkjs(
         &script_path,
         &workspace_root.join("tests/circuits/simple_mul.wtns"),
     );
@@ -69,27 +75,4 @@ fn verify_accepts_valid_proof_bundle_and_rejects_tampered_bundle() {
         err.to_string().contains("hash validation failed"),
         "verify error should indicate bundle hash mismatch"
     );
-}
-
-fn write_fake_snarkjs(script_path: &Path, witness_fixture_path: &Path) {
-    let script = format!(
-        "#!/bin/sh\ncp '{}' \"$5\"\n",
-        witness_fixture_path.display()
-    );
-    fs::write(script_path, script).expect("should write fake snarkjs script");
-
-    use std::os::unix::fs::PermissionsExt;
-    let mut perms = fs::metadata(script_path)
-        .expect("should read script metadata")
-        .permissions();
-    perms.set_mode(0o755);
-    fs::set_permissions(script_path, perms).expect("should set executable permissions");
-}
-
-fn temp_dir(tag: &str) -> PathBuf {
-    let unique = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("clock should be after unix epoch")
-        .as_nanos();
-    std::env::temp_dir().join(format!("cirbinius-{tag}-{unique}"))
 }

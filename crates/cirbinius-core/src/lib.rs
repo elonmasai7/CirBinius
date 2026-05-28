@@ -1,5 +1,4 @@
 use std::path::PathBuf;
-use std::process::Command;
 use std::{fs, path::Path};
 
 use anyhow::{Context, Result, anyhow, bail};
@@ -282,26 +281,32 @@ fn run_compile_circom(context: &CommandContext, args: CompileCircomArgs) -> Resu
 
     fs::create_dir_all(&circom_out_dir)?;
 
-    let mut command = Command::new(&args.circom_bin);
-    command
-        .arg(&source_path)
-        .arg("--r1cs")
-        .arg("--sym")
-        .arg("--wasm")
-        .arg("--output")
-        .arg(&circom_out_dir);
+    let mut circom_args = vec![
+        source_path.display().to_string(),
+        "--r1cs".to_string(),
+        "--sym".to_string(),
+        "--wasm".to_string(),
+        "--output".to_string(),
+        circom_out_dir.display().to_string(),
+    ];
 
     if let Some(main_component) = &args.main_component {
-        command.arg("--main").arg(main_component);
+        circom_args.push("--main".to_string());
+        circom_args.push(main_component.clone());
     }
 
     for include_path in &args.include_paths {
         let resolved = resolve_path(&context.project_root, include_path);
-        command.arg("-l").arg(resolved);
+        circom_args.push("-l".to_string());
+        circom_args.push(resolved.display().to_string());
     }
 
-    let output = command
-        .output()
+    let args_refs: Vec<&str> = circom_args.iter().map(|s| s.as_str()).collect();
+    let output = duct::cmd(&args.circom_bin, &args_refs)
+        .unchecked()
+        .stdout_capture()
+        .stderr_capture()
+        .run()
         .with_context(|| format!("failed to execute circom binary '{}'", args.circom_bin))?;
 
     if !output.status.success() {
@@ -598,7 +603,67 @@ fn run_prove_precheck(context: &CommandContext, args: ProveArgs) -> Result<Comma
 }
 
 fn run_doctor(context: &CommandContext, args: DoctorArgs) -> Result<CommandOutcome> {
+    let os_info = cirbinius_platform::OsInfo::detect();
     let manifest = BackendCapabilitiesManifest::new_precheck_only();
+
+    let circom_path = cirbinius_platform::process::find_binary("circom");
+    let snarkjs_path = cirbinius_platform::process::find_binary("snarkjs");
+    let docker_path = cirbinius_platform::process::find_binary("docker");
+    let cache = cirbinius_platform::os::cache_dir();
+    let config = cirbinius_platform::os::config_dir();
+    let temp = cirbinius_platform::os::temp_dir();
+
+    println!("CirBinius Doctor");
+    println!();
+    println!("OS:       {} {}", os_info.os, os_info.arch);
+    println!("Rust:     {}", os_info.rust_version);
+    println!(
+        "Circom:   {}",
+        circom_path
+            .as_deref()
+            .unwrap_or(std::path::Path::new("not found"))
+            .display()
+    );
+    println!(
+        "SnarkJS:  {}",
+        snarkjs_path
+            .as_deref()
+            .unwrap_or(std::path::Path::new("not found"))
+            .display()
+    );
+    println!(
+        "Docker:   {}",
+        docker_path
+            .as_deref()
+            .unwrap_or(std::path::Path::new("not found"))
+            .display()
+    );
+    println!(
+        "Cache:    {}",
+        cache
+            .as_deref()
+            .unwrap_or(std::path::Path::new("unavailable"))
+            .display()
+    );
+    println!(
+        "Config:   {}",
+        config
+            .as_deref()
+            .unwrap_or(std::path::Path::new("unavailable"))
+            .display()
+    );
+    println!("Temp:     {}", temp.display());
+    println!();
+    println!("Backend:  {}", manifest.backend);
+    println!(
+        "Status:   {}",
+        if manifest.capabilities.proof_generation_supported {
+            "proof generation ready"
+        } else {
+            "precheck-only"
+        }
+    );
+
     let out_path = if let Some(path) = args.out_path.as_ref() {
         resolve_path(&context.project_root, path)
     } else {
