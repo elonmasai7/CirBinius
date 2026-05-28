@@ -1,0 +1,14 @@
+[package]
+name = "cirbinius-cbir"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+cirbinius-normalize = { path = "../cirbinius-normalize" }
+cirbinius-types = { path = "../cirbinius-types" }
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true

@@ -1,0 +1,21 @@
+[package]
+name = "cirbinius-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+cirbinius-artifacts = { path = "../cirbinius-artifacts" }
+cirbinius-binius64 = { path = "../cirbinius-binius64" }
+cirbinius-cbir = { path = "../cirbinius-cbir" }
+cirbinius-frontend = { path = "../cirbinius-frontend" }
+cirbinius-normalize = { path = "../cirbinius-normalize" }
+cirbinius-optimizer = { path = "../cirbinius-optimizer" }
+cirbinius-witness = { path = "../cirbinius-witness" }
+cirbinius-types = { path = "../cirbinius-types" }
+serde_json.workspace = true
+
+[dev-dependencies]
+jsonschema = "0.18"

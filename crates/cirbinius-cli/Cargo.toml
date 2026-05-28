@@ -1,0 +1,16 @@
+[package]
+name = "cirbinius-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+clap.workspace = true
+cirbinius-core = { path = "../cirbinius-core" }
+cirbinius-types = { path = "../cirbinius-types" }
+
+[[bin]]
+name = "cirbinius"
+path = "src/main.rs"

@@ -1,0 +1,11 @@
+[package]
+name = "cirbinius-frontend"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+cirbinius-r1cs = { path = "../cirbinius-r1cs" }
+cirbinius-symbols = { path = "../cirbinius-symbols" }

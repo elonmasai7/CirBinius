@@ -1,0 +1,39 @@
+[workspace]
+members = [
+  "crates/cirbinius-api",
+  "crates/cirbinius-artifacts",
+  "crates/cirbinius-bench",
+  "crates/cirbinius-binius64",
+  "crates/cirbinius-cbir",
+  "crates/cirbinius-cli",
+  "crates/cirbinius-core",
+  "crates/cirbinius-frontend",
+  "crates/cirbinius-normalize",
+  "crates/cirbinius-optimizer",
+  "crates/cirbinius-prover",
+  "crates/cirbinius-r1cs",
+  "crates/cirbinius-reports",
+  "crates/cirbinius-sandbox",
+  "crates/cirbinius-symbols",
+  "crates/cirbinius-types",
+  "crates/cirbinius-verifier",
+  "crates/cirbinius-witness",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0"
+repository = "https://github.com/cirbinius/cirbinius"
+
+[workspace.dependencies]
+anyhow = "1.0"
+clap = { version = "4.5", features = ["derive"] }
+num-bigint = "0.4"
+num-traits = "0.2"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+sha2 = "0.10"
+thiserror = "2.0"
+tracing = "0.1"

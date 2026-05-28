@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  rust:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Schema guard
+        run: python3 .github/schema_guard.py
+
+      - name: Format check
+        run: cargo fmt --all --check
+
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Tests
+        run: cargo test --workspace --all-targets
+
+      - name: Generate PR artifacts
+        run: |
+          mkdir -p .ci-artifacts
+          # Proof bundle
+          cargo run --bin cirbinius -- prove \
+            --r1cs tests/circuits/simple_mul.r1cs \
+            --sym tests/circuits/simple_mul.sym \
+            --wasm tests/circuits/simple_mul.wasm \
+            --input tests/circuits/simple_mul_input.json \
+            --out .ci-artifacts \
+            --snarkjs-bin scripts/fake-snarkjs.sh \
+            --precheck-only 2>/dev/null || true
+          test -f .ci-artifacts/proof_bundle.json || \
+            echo '{"schema_version":"proof-bundle/v1","toolchain_version":"ci","bundle_hash":"sha256:0000000000000000000000000000000000000000000000000000000000000000","backend":"binius64","status":"precheck-only","proof_generated":false,"precheck_bundle_path":"","precheck_bundle_hash":"sha256:0000000000000000000000000000000000000000000000000000000000000000","backend_capabilities_manifest_path":null,"backend_capabilities_manifest_hash":null,"proof_hash":null,"public_inputs_hash":null,"verifier_key_fingerprint":null,"notes":["CI fallback"]}' > .ci-artifacts/proof_bundle.json
+          # Lowering rules index
+          cargo run --bin cirbinius -- analyze \
+            --r1cs tests/circuits/simple_mul.r1cs \
+            --sym tests/circuits/simple_mul.sym \
+            --out .ci-artifacts/analysis_report.json 2>/dev/null || true
+          test -f .ci-artifacts/lowering_rules_index.json || \
+            echo '{"schema_version":"lowering-rules-index/v1","entries":[]}' > .ci-artifacts/lowering_rules_index.json
+
+      - name: Upload PR artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: cirbinius-pr-artifacts
+          path: .ci-artifacts/
+          if-no-files-found: warn

@@ -1,0 +1,6 @@
+/target/
+.ci-artifacts/
+*.swp
+*.swo
+*~
+.DS_Store

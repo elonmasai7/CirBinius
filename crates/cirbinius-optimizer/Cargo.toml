@@ -1,0 +1,11 @@
+[package]
+name = "cirbinius-optimizer"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+cirbinius-cbir = { path = "../cirbinius-cbir" }
+cirbinius-types = { path = "../cirbinius-types" }
+serde.workspace = true

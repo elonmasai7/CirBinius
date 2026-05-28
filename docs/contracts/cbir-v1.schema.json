@@ -1,0 +1,160 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cirbinius.dev/schemas/cbir-v1.schema.json",
+  "title": "CirBinius CBIR v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "metadata",
+    "backend",
+    "field_modulus_hex",
+    "wire_count",
+    "public_output_count",
+    "public_input_count",
+    "private_input_count",
+    "constraints",
+    "signals"
+  ],
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "toolchain_version",
+        "content_hash"
+      ],
+      "properties": {
+        "schema_version": {
+          "type": "string",
+          "const": "cbir/v1"
+        },
+        "toolchain_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "content_hash": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        }
+      }
+    },
+    "backend": {
+      "type": "string",
+      "enum": ["binius64"]
+    },
+    "field_modulus_hex": {
+      "type": "string",
+      "pattern": "^0x[0-9a-f]+$"
+    },
+    "wire_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "public_output_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "public_input_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "private_input_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "constraints": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "kind",
+          "a",
+          "b",
+          "c",
+          "signal_hints"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "kind": {
+            "type": "string",
+            "minLength": 1
+          },
+          "a": {
+            "$ref": "#/$defs/linearCombination"
+          },
+          "b": {
+            "$ref": "#/$defs/linearCombination"
+          },
+          "c": {
+            "$ref": "#/$defs/linearCombination"
+          },
+          "signal_hints": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "signals": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "wire_id",
+          "name"
+        ],
+        "properties": {
+          "wire_id": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "linearCombination": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "terms"
+      ],
+      "properties": {
+        "terms": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "wire_id",
+              "coeff_hex"
+            ],
+            "properties": {
+              "wire_id": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "coeff_hex": {
+                "type": "string",
+                "pattern": "^0x[0-9a-f]+$"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

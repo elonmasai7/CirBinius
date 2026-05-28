@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cirbinius.dev/schemas/prove-precheck-bundle-v1.schema.json",
+  "title": "CirBinius Prove Precheck Bundle v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "toolchain_version",
+    "bundle_hash",
+    "hashes",
+    "report"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "prove-precheck-bundle/v1"
+    },
+    "toolchain_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "bundle_hash": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "hashes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "circuit_hash",
+        "witness_hash",
+        "wasm_hash",
+        "input_hash",
+        "binius_witness_hash"
+      ],
+      "properties": {
+        "circuit_hash": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "witness_hash": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "wasm_hash": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "input_hash": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "binius_witness_hash": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            }
+          ]
+        }
+      }
+    },
+    "report": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "precheck_passed",
+        "generated_witness_path",
+        "generated_witness_len",
+        "r1cs_wire_count",
+        "witness_equivalent",
+        "value_mismatch_count",
+        "constraint_failure_count"
+      ],
+      "properties": {
+        "precheck_passed": {
+          "type": "boolean"
+        },
+        "generated_witness_path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "generated_witness_len": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "r1cs_wire_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "witness_equivalent": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "boolean"
+            }
+          ]
+        },
+        "value_mismatch_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "constraint_failure_count": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    }
+  }
+}

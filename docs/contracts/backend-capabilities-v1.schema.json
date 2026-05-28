@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cirbinius.dev/schemas/backend-capabilities-v1.schema.json",
+  "title": "CirBinius Backend Capabilities v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "toolchain_version",
+    "manifest_hash",
+    "backend",
+    "capabilities",
+    "notes"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "backend-capabilities/v1"
+    },
+    "toolchain_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "manifest_hash": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "backend": {
+      "type": "string",
+      "const": "binius64"
+    },
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "precheck_only_supported",
+        "proof_generation_supported",
+        "verify_supported",
+        "proof_hash_supported",
+        "public_inputs_hash_supported",
+        "verifier_key_fingerprint_supported"
+      ],
+      "properties": {
+        "precheck_only_supported": {
+          "type": "boolean"
+        },
+        "proof_generation_supported": {
+          "type": "boolean"
+        },
+        "verify_supported": {
+          "type": "boolean"
+        },
+        "proof_hash_supported": {
+          "type": "boolean"
+        },
+        "public_inputs_hash_supported": {
+          "type": "boolean"
+        },
+        "verifier_key_fingerprint_supported": {
+          "type": "boolean"
+        }
+      }
+    },
+    "notes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

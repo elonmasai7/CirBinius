@@ -1,0 +1,66 @@
+{
+  "metadata": {
+    "schema_version": "cbir/v1",
+    "toolchain_version": "0.1.0",
+    "content_hash": "sha256:768c4454420f035e6103f1cc62a60035ff6523383e999f824082348bd7d55099"
+  },
+  "backend": "binius64",
+  "field_modulus_hex": "0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000001",
+  "wire_count": 4,
+  "public_output_count": 0,
+  "public_input_count": 1,
+  "private_input_count": 2,
+  "constraints": [
+    {
+      "id": 1,
+      "kind": "mul",
+      "a": {
+        "terms": [
+          {
+            "wire_id": 1,
+            "coeff_hex": "0x01"
+          }
+        ]
+      },
+      "b": {
+        "terms": [
+          {
+            "wire_id": 2,
+            "coeff_hex": "0x01"
+          }
+        ]
+      },
+      "c": {
+        "terms": [
+          {
+            "wire_id": 3,
+            "coeff_hex": "0x01"
+          }
+        ]
+      },
+      "signal_hints": [
+        "main.a",
+        "main.b",
+        "main.c"
+      ]
+    }
+  ],
+  "signals": [
+    {
+      "wire_id": 0,
+      "name": "one"
+    },
+    {
+      "wire_id": 1,
+      "name": "main.a"
+    },
+    {
+      "wire_id": 2,
+      "name": "main.b"
+    },
+    {
+      "wire_id": 3,
+      "name": "main.c"
+    }
+  ]
+}
